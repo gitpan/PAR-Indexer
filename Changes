@@ -1,0 +1,6 @@
+Revision history for Perl extension PAR::Indexer.
+
+0.90     Tue Sep  2 15:13 2008
+    - original version, as split out from
+      PAR::Repository
+
