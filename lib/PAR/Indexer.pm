@@ -17,11 +17,11 @@ our @ISA = qw(Exporter);
 our @EXPORT = ();
 our %EXPORT_TAGS = (
     all => [
-        qw(scan_par_for_packages scan_par_for_scripts)
+        qw(scan_par_for_packages scan_par_for_scripts dependencies_from_meta_yml)
     ],
 );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-our $VERSION = '0.90';
+our $VERSION = '0.91';
 
 =head1 NAME
 
@@ -29,9 +29,11 @@ PAR::Indexer - Scan a PAR distro for packages and scripts
 
 =head1 SYNOPSIS
 
-  use PAR::Indexer qw(scan_par_for_packages scan_par_for_scripts);
+  use PAR::Indexer qw(scan_par_for_packages scan_par_for_scripts dependencies_from_meta_yml);
   my $pkgs_hash    = scan_par_for_packages($parfile);
   my $scripts_hash = scan_par_for_scripts($parfile);
+  
+  my $dependencies = dependencies_from_meta_yml(\%meta_yml_hash);
 
 =head1 DESCRIPTION
 
@@ -194,6 +196,44 @@ sub scan_par_for_scripts {
 }
 
 
+=head2 dependencies_from_meta_yml
+
+Determine the dependencies declared in F<META.yml>. Expects
+a reference to a hash containing the parsed YAML tree as
+first argument.
+
+Returns essentially the merged C<configure_requires>, C<build_requires>,
+and C<requires> hashes from the F<META.yml>. The order of precedence
+is C<<requires > build_requires > configure_requires>>. If none
+of the three sections is found, the function returns false. If any one of
+them was found (even if empty), a hash reference will be returned.
+
+=cut
+
+sub dependencies_from_meta_yml {
+  my $meta = shift;
+  return() unless defined $meta and ref($meta) eq 'HASH';
+
+  return() if not exists $meta->{requires}
+              and not exists $meta->{build_requires}
+              and not exists $meta->{configure_requires};
+
+  my $req = {};
+
+  foreach my $source (qw(requires build_requires configure_requires)) {
+    next
+      if not exists $meta->{$source} or not ref($meta->{$source}) eq 'HASH';
+    my $this_req = $meta->{$source};
+
+    foreach my $module (keys %$this_req) {
+      $req->{$module} = $this_req->{$module}
+        if not exists $req->{$module};
+    }
+  }
+
+  return $req;
+}
+
 1;
 __END__
 
@@ -206,7 +246,7 @@ sources which were written by Andreas Koenig.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2006-2008 by Steffen Mueller
+Copyright 2006-2009 by Steffen Mueller
 
 Except for the code copied from the PAUSE scanner which is
 (C) Andreas Koenig.
@@ -216,4 +256,3 @@ it under the same terms as Perl itself, either Perl version 5.6 or,
 at your option, any later version of Perl 5 you may have available.
 
 =cut
-
